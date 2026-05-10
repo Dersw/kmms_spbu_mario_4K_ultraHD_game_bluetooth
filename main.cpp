@@ -13,12 +13,18 @@ typedef struct SObject {
     float vertSpeed;
     bool isFly;
     char cType;
+    float horizSpeed;
 } TObject;
 
 char map[mapHeight][mapWidth + 1];
+
 TObject mario;
 TObject *brick = nullptr;
 int brickLength;
+
+TObject *moving = nullptr;
+int movingLength;
+
 int level = 1;
 
 void ClearMap() {
@@ -49,6 +55,7 @@ void InitObject(TObject *obj, float xPos, float yPos, float oWidth, float oHeigh
     (*obj).height = oHeight;
     (*obj).vertSpeed = 0;
     (*obj).cType = inType;
+    (*obj).horizSpeed = 0.2;
 }
 
 bool IsCollision(TObject o1, TObject o2);
@@ -76,6 +83,46 @@ void VertMoveObject(TObject *obj) {
         }
     }
 
+}
+
+void DeleteMoving(int i) {
+    movingLength--;
+    moving[i] = moving[movingLength];
+    moving = realloc(moving, sizeof(*moving) * movingLength);
+}
+
+void MarioCollision() {
+    for (int i = 0; i < movingLength; i++) {
+        if (IsCollision(mario, moving[i])) {
+            if ((mario.isFly) && (mario.vertSpeed > 0)
+                && (mario.y + mario.height < moving[i].y + moving[i].height * 0.5)) {
+                    DeleteMoving(i);
+                    i--;
+                    continue;
+                } else {
+                    CreateLevel(level);
+                }
+        }
+    }
+}
+
+void HorizonMoveObject(TObject *obj) {
+    obj[0].x += obj[0].horizSpeed;
+
+    for (int i = 0; i < brickLength; i++) {
+        if (IsCollision(obj[0], brick[i])) {
+            obj[0].x -= obj[0].horizSpeed;
+            obj[0].horizSpeed = -obj[0].horizSpeed;
+            return;
+        }
+    }
+
+    TObject tmp = *obj;
+    VertMoveObject(&tmp);
+    if (tmp.isFly) {
+        obj[0].x -= obj[0].horizSpeed;
+        obj[0].horizSpeed = -obj[0].horizSpeed;
+    }
 }
 
 bool IsPosInMap(int x, int y) {
@@ -115,8 +162,12 @@ void HorizonMoveMap(float dx) {
     }
 
 
-    for (int i = o; i < brickLength; i++) {
+    for (int i = 0; i < brickLength; i++) {
         brick[i].x += dx;
+    }
+
+    for (int i = 0; i < movingLength; i++) {
+        moving[i].x += dx;
     }
 }
 
@@ -146,6 +197,9 @@ void CreateLevel(int lvl) {
         InitObject(brick+1, 80, 20, 15, 5, "#");
         InitObject(brick+2, 120, 15, 15, 10, "#");
         InitObject(brick+3, 160, 10, 15, 15, "+");
+        movingLength = 1;
+        moving = realloc(moving, sizeof(*moving) * movingLength);
+        InitObject(moving+0, 25, 10, 3, 2, "o");
     }
 }
 
@@ -172,8 +226,21 @@ int main() {
         }
 
         VertMoveObject(&mario);
+        MarioCollision();
+
         for (int i = 0; i < brickLength; i++) {
             PutObjectOnMap(brick[i]);
+        }
+        for (int i = 0; i < movingLength; i++) {
+            VertMoveObject(moving + i);
+            HorizonMoveObject(moving + i);
+            if (moving[i].y > mapHeight) {
+                DeleteMoving(i);
+                i--;
+                continue;
+
+            }
+            PutObjectOnMap(moving[i]);
         }
         PutObjectOnMap(mario);
 
