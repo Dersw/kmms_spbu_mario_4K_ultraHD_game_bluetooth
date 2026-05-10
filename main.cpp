@@ -26,6 +26,8 @@ TObject *moving = nullptr;
 int movingLength;
 
 int level = 1;
+int score;
+int maxLvl;
 
 void ClearMap() {
     for (int i = 0; i < mapWidth; i++) {
@@ -58,6 +60,12 @@ void InitObject(TObject *obj, float xPos, float yPos, float oWidth, float oHeigh
     (*obj).horizSpeed = 0.2;
 }
 
+void PlayerDead() {
+    system("color 4F");
+    Sleep(500);
+    CreateLevel(level);
+}
+
 bool IsCollision(TObject o1, TObject o2);
 void CreateLevel(int lvl);
 TObject *GetNewMoving();
@@ -77,10 +85,11 @@ void VertMoveObject(TObject *obj) {
             if ((brick[i].cType == '?') && (obj[0].vertSpeed < 0) && (obj == &mario)) {
                 brick[i].cType = '-';
                 InitObject(GetNewMoving(), brick[i].x, brick[i].y-3, 3, 2, '$');
+                moving[movingLength - 1].vertSpeed = -0.7;
             }
             if (brick[i].cType == '+') {
                 level++;
-                if (level > 3) {
+                if (level > maxLvl) {
                     level = 1;
                 }
                 system("color 2F");
@@ -105,14 +114,16 @@ void MarioCollision() {
             if (moving[i].cType == 'o') {
                 if ((mario.isFly) && (mario.vertSpeed > 0)
                     && (mario.y + mario.height < moving[i].y + moving[i].height * 0.5)) {
+                        score += 50;
                         DeleteMoving(i);
                         i--;
                         continue;
                     } else {
-                        CreateLevel(level);
+                        PlayerDead();
                     }
             }
             if (moving[i].cType == '$') {
+                score += 100;
                 DeleteMoving(i);
                 i--;
                 continue;
@@ -204,6 +215,15 @@ TObject *GetNewMoving() {
     return moving + movingLength + 1;
 }
 
+void PutScoreOnMap() {
+    char c[30];
+    sprintf(c, "Score: %d", score);
+    int len = strlen(c);
+    for (int i = 0; i < len; i++) {
+        map[1][i + 5] = c[i]
+    }
+}
+
 void CreateLevel(int lvl) {
     system("color 9F")
     brickLength = 0;
@@ -213,6 +233,7 @@ void CreateLevel(int lvl) {
     moving = realloc(moving, 0);
 
     InitObject(&mario, 39, 10, 3, 3, "@");
+    score = 0;
 
     if (lvl == 1) {
         InitObject(GetNewBrick(), 20, 20, 40, 5, "#");
@@ -265,6 +286,8 @@ void CreateLevel(int lvl) {
         InitObject(GetNewMoving(), 120, 10, 3, 2, "o");
         InitObject(GetNewMoving(), 130, 10, 3, 2, "o");
     }
+
+    maxLvl = 3;
 }
 
 int main() {
@@ -285,7 +308,7 @@ int main() {
         }
 
         if (mario.y > mapHeight) {
-            CreateLevel(level);
+            PlayerDead();
         }
 
         VertMoveObject(&mario);
@@ -306,6 +329,7 @@ int main() {
             PutObjectOnMap(moving[i]);
         }
         PutObjectOnMap(mario);
+        PutScoreOnMap();
 
         setCur(0, 0);
         ShowMap();
